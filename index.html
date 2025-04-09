@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ambulance Detector</title>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+  <h1>🚨 Ambulance Detector</h1>
+  <button onclick="init()">Start Detection</button>
+  <script>
+    const URL = "./model/"; // Folder where model is located
+    let model, webcam, maxPredictions;
+
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      webcam = new tmImage.Webcam(200, 200, true);
+      await webcam.setup();
+      await webcam.play();
+      window.requestAnimationFrame(loop);
+
+      document.body.appendChild(webcam.canvas);
+    }
+
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
+      const ambulanceProb = prediction[0].probability.toFixed(2); // Class 0 = Ambulance
+
+      if (ambulanceProb > 0.90) {
+        console.log("Ambulance detected!");
+        fetch("http://192.168.43.23/ambulance") // Replace with ESP32 IP
+          .then(() => console.log("Signal sent to ESP32"))
+          .catch(err => console.error("Failed to send:", err));
+      }
+    }
+  </script>
+</body>
+</html>
